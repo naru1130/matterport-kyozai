@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Matterport 施工教材</title>
+
+  <!-- ★ここだけ元のコードから貼り直してください（元の importmap の MP_SDK のアドレス） -->
+  <script type="importmap">
+    {
+      "imports": {
+        "MP_SDK": "https://api.matterport.com/sdk/bootstrap/3.0.0-0-g0517b8d76c/sdk.es6.js?applicationKey=ymffii7dt0x20s12nuw4z72nd"
+      }
+    }
+  </script>
+
+  <style>
+#studentGate {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex; align-items: center; justify-content: center;
+}
+#studentGateCard {
+  background: white; color: #222; width: 320px; padding: 28px;
+  border-radius: 12px; box-sizing: border-box;
+  max-height: 90vh; overflow-y: auto;
+}
+#studentGateCard input {
+  display: block; box-sizing: border-box; width: 100%;
+  padding: 10px; margin: 6px 0 16px;
+}
+#startMatterport { width: 100%; padding: 12px; cursor: pointer; }
+#studentGateError { color: #c00; }
+#configWarnings { color: #b45f00; font-size: 12px; margin: 8px 0 0; padding-left: 18px; }
+
+#matterportContainer { position: relative; width: 853px; height: 480px; }
+#showcase-iframe { width: 853px; height: 480px; border: 0; display: block; }
+
+/* ◇メニュー */
+#quizMenu { position: absolute; top: 20px; left: 20px; z-index: 2000; }
+#menuButton { width: 40px; height: 40px; padding: 0; cursor: pointer; }
+#menuPanel { display: none; position: absolute; left: 40px; top: 0; }
+#quizMenu:hover #menuPanel { display: block; }
+#quizMenu.open #menuPanel { display: block; }
+#menuPanel button {
+  display: block; margin-bottom: 6px; position: static;
+  padding: 10px 15px; font-size: 16px; cursor: pointer; white-space: nowrap;
+}
+
+/* メインクイズ */
+#quiz {
+  display: none; position: absolute; top: 20px; right: 20px;
+  background: white; padding: 20px; border-radius: 10px; z-index: 1000;
+  max-width: 300px;
+}
+#quiz button {
+  display: block; width: 200px; margin: 8px 0; padding: 10px; cursor: pointer;
+}
+#result { margin-top: 15px; padding: 10px; font-size: 20px; font-weight: bold; text-align: center; }
+#nextChoice { display: none; margin-top: 15px; }
+#endTestButton { width: auto; margin-bottom: 15px; padding: 8px 15px; cursor: pointer; }
+
+/* 動画パネル */
+#videoPanel {
+  display: none; position: absolute; top: 20px; right: 20px;
+  background: white; padding: 15px; border-radius: 10px; z-index: 1500;
+}
+#closeVideoButton { margin-bottom: 10px; padding: 8px 15px; cursor: pointer; }
+
+/* 結果画面 */
+#resultScreen {
+  display: none; position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: white; padding: 30px; border-radius: 10px; z-index: 3000;
+  width: 350px; max-height: 80vh; overflow-y: auto;
+}
+#resultScreen h2 { text-align: center; }
+#score, #accuracy { font-size: 20px; font-weight: bold; text-align: center; }
+#answerResults { margin-top: 20px; }
+
+/* 階層の切り替え（◇メニューの中に出る一覧） */
+#periodList { display: none; margin: 0 0 6px 16px; }
+#periodList.open { display: block; }
+#periodList button { font-size: 14px; padding: 8px 12px; }
+#periodList button.active { background: #333; color: #fff; font-weight: bold; }
+
+/* 読み込み中・エラー表示 */
+#loading {
+  display: none; position: absolute; inset: 0; z-index: 2500;
+  background: rgba(0, 0, 0, 0.65); color: #fff;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 20px; box-sizing: border-box; font-size: 18px;
+}
+
+/* 編集モード（?edit=1 のときだけ表示） */
+#editInfo {
+  display: none; position: absolute; left: 20px; bottom: 16px; z-index: 2000;
+  background: rgba(0, 0, 0, 0.75); color: #fff; padding: 10px;
+  border-radius: 8px; font-size: 12px; font-family: monospace;
+}
+#editInfo div { margin-bottom: 4px; }
+#editInfo button { margin-right: 4px; cursor: pointer; font-size: 11px; }
+  </style>
+</head>
+
+<body>
+
+<div id="studentGate">
+  <div id="studentGateCard">
+    <h2>利用者情報の入力</h2>
+    <p>クイズを始める前に入力してください。</p>
+
+    <form id="studentGateForm">
+      <label for="studentName">氏名</label>
+      <input id="studentName" type="text" required autocomplete="name">
+
+      <label for="studentId">学籍番号</label>
+      <input id="studentId" type="text" required autocomplete="off">
+
+      <button id="startMatterport" type="submit">利用開始</button>
+
+      <p id="studentGateError"></p>
+      <ul id="configWarnings"></ul>
+    </form>
+  </div>
+</div>
+
+<h1 id="buildingTitle">Matterport 施工教材</h1>
+
+<div id="matterportContainer">
+
+  <div id="quizMenu">
+    <button id="menuButton">◇</button>
+    <div id="menuPanel">
+      <button id="testButton">クイズ</button>
+      <button id="videoButton">動画</button>
+      <button id="periodMenuButton">階層の切り替え</button>
+      <div id="periodList"></div>
+    </div>
+  </div>
+
+  <div id="quiz">
+    <button id="endTestButton">テスト終了</button>
+    <p id="question"></p>
+    <div id="answers"></div>
+    <div id="result"></div>
+    <div id="nextChoice">
+      <p>次はどうしますか？</p>
+      <button id="explanationButton">解説タブに移動しますか？</button>
+      <button id="nextQuestionButton">次の問題</button>
+    </div>
+  </div>
+
+  <div id="videoPanel">
+    <button id="closeVideoButton">閉じる</button>
+    <iframe
+      id="mainVideoFrame" width="480" height="270" src=""
+      title="解説動画" style="border:0; display:block;"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen>
+    </iframe>
+    <p style="margin:8px 0 0;">
+      <a id="videoFallbackLink" href="#" target="_blank" rel="noopener noreferrer">▶ YouTubeで開く</a>
+    </p>
+  </div>
+
+  <div id="editInfo">
+    <div id="editPos">座標: （モデル上にマウスを置く）</div>
+    <div id="editSweep">Sweep ID: -</div>
+    <button id="copyPos">座標をコピー</button>
+    <button id="copySweep">Sweep IDをコピー</button>
+  </div>
+
+  <div id="loading"></div>
+
+  <div id="resultScreen">
+    <h2>テスト結果</h2>
+    <p id="score"></p>
+    <p id="accuracy"></p>
+    <div id="answerResults"></div>
+    <button id="closeResultButton">結果を閉じる</button>
+  </div>
+
+  <!-- モデルの iframe は、時期を選ぶたびに app.js が作り直します -->
+  <iframe id="showcase-iframe" allow="fullscreen; xr-spatial-tracking"></iframe>
+
+</div>
+
+<script type="module" src="./app.js"></script>
+
+</body>
+</html>
