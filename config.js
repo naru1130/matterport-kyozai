@@ -12,6 +12,7 @@
 //  ・ブロックとブロックの間には、カンマ「,」が必要です
 //  ・文字は半角の ""（ダブルクォート）で囲みます
 //  ・クイズの answer は "A" "B" "C" "D" のどれか（options の順番に対応）
+//  ・記述式の問題は type: "text" と answers: ["正解1", "正解2"] を書く（options と answer は不要）
 //  ・座標(x, y, z)とSweep IDは、ページを ?edit=1 付きで開くと画面に表示されます
 //    例: http://localhost:8080/?building=kit2&edit=1
 //  ・座標とSweep IDは「モデルごと」に違います。時期ごとに調べ直してください
@@ -90,9 +91,9 @@ export const BUILDINGS = {
                 answer: "B"
               },
               {
-                question: "第3問：Matterportでは何ができるでしょう？",
-                options: ["3D空間を見て回る", "建物を自動で建てる", "部屋の温度を変える"],
-                answer: "A"
+                question: "第3問：Matterportを使うと、どんなことができるか自由に書いてください。",
+                type: "text",                          // ← 記述問題の印
+                answers: ["3D空間を見て回る", "見て回る", "バーチャルツアー"]   // ← 正解として認める答え（どれか1つ合えば正解）
               }
             ]
           }
